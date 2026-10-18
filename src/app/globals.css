@@ -1,0 +1,304 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* --------------------------------------------------------------- palette
+   one accent, a warm neutral ramp, and a small set of tones for state.  */
+
+:root {
+  --canvas: #f6f6f8;
+  --surface: #ffffff;
+  --surface-2: #f1f1f4;
+  --surface-3: #e9e9ee;
+  --border: #e4e4ea;
+  --border-strong: #d3d3dc;
+  --ink: #15151a;
+  --ink-2: #3f3f4a;
+  --muted: #71717f;
+  --faint: #9a9aa6;
+
+  --accent: #5b4bdb;
+  --accent-hover: #4d3ecb;
+  --accent-soft: #eeecfd;
+  --accent-ink: #4636c4;
+
+  --blue: #2563eb;
+  --blue-soft: #e8effd;
+  --violet: #7c3aed;
+  --violet-soft: #f0e9fd;
+  --cyan: #0891b2;
+  --cyan-soft: #e0f2f7;
+  --green: #0f9d58;
+  --green-soft: #e3f5ec;
+  --amber: #c2740a;
+  --amber-soft: #fdf0dc;
+  --rose: #d93a5c;
+  --rose-soft: #fdeaee;
+  --slate: #5b6472;
+  --slate-soft: #edf0f3;
+  --stone: #78716c;
+  --stone-soft: #f0eeec;
+
+  --shadow-xs: 0 1px 2px rgb(20 20 30 / 0.05);
+  --shadow-sm: 0 1px 3px rgb(20 20 30 / 0.07), 0 1px 2px rgb(20 20 30 / 0.04);
+  --shadow-md: 0 4px 12px rgb(20 20 30 / 0.08), 0 1px 3px rgb(20 20 30 / 0.05);
+  --shadow-lg: 0 12px 32px rgb(20 20 30 / 0.12), 0 2px 8px rgb(20 20 30 / 0.06);
+}
+
+.dark {
+  --canvas: #0b0b0e;
+  --surface: #131318;
+  --surface-2: #1a1a21;
+  --surface-3: #23232c;
+  --border: #26262f;
+  --border-strong: #353542;
+  --ink: #f2f2f5;
+  --ink-2: #c9c9d2;
+  --muted: #8d8d9a;
+  --faint: #6a6a78;
+
+  --accent: #7c6cf0;
+  --accent-hover: #8d7ff5;
+  --accent-soft: #1f1b3d;
+  --accent-ink: #b3a7fb;
+
+  --blue: #6f9bf5;
+  --blue-soft: #16233d;
+  --violet: #a78bfa;
+  --violet-soft: #231a3d;
+  --cyan: #4cc3e0;
+  --cyan-soft: #102a33;
+  --green: #4ec98a;
+  --green-soft: #0f2a1e;
+  --amber: #e0a45a;
+  --amber-soft: #2e2411;
+  --rose: #f0788f;
+  --rose-soft: #331520;
+  --slate: #98a3b3;
+  --slate-soft: #1c1f26;
+  --stone: #a8a29e;
+  --stone-soft: #232120;
+
+  --shadow-xs: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-sm: 0 1px 3px rgb(0 0 0 / 0.45);
+  --shadow-md: 0 4px 14px rgb(0 0 0 / 0.5);
+  --shadow-lg: 0 16px 40px rgb(0 0 0 / 0.6);
+}
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-line: var(--border);
+  --color-line-strong: var(--border-strong);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-ink: var(--accent-ink);
+
+  --color-blue: var(--blue);
+  --color-blue-soft: var(--blue-soft);
+  --color-violet: var(--violet);
+  --color-violet-soft: var(--violet-soft);
+  --color-cyan: var(--cyan);
+  --color-cyan-soft: var(--cyan-soft);
+  --color-green: var(--green);
+  --color-green-soft: var(--green-soft);
+  --color-amber: var(--amber);
+  --color-amber-soft: var(--amber-soft);
+  --color-rose: var(--rose);
+  --color-rose-soft: var(--rose-soft);
+  --color-slate: var(--slate);
+  --color-slate-soft: var(--slate-soft);
+  --color-stone: var(--stone);
+  --color-stone-soft: var(--stone-soft);
+
+  --font-sans: "inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "sf mono", "jetbrains mono", monospace;
+
+  --radius-xs: 5px;
+  --radius-sm: 7px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+}
+
+/* --------------------------------------------------------------- base */
+
+* {
+  border-color: var(--border);
+}
+
+html {
+  color-scheme: light;
+}
+html.dark {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "cv02", "cv03", "cv04", "ss01";
+}
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+
+/* a quieter, denser scrollbar than the platform default */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+  background-clip: content-box;
+}
+
+/* --------------------------------------------------------------- components */
+
+@layer components {
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-xs);
+  }
+
+  .panel-flush {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-xs);
+  }
+
+  /* small all-caps-ish label used above values and sections */
+  .eyebrow {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    color: var(--faint);
+    text-transform: lowercase;
+  }
+
+  .field {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    padding: 7px 10px;
+    font-size: 13px;
+    color: var(--ink);
+    outline: none;
+    transition: border-color 120ms ease, box-shadow 120ms ease;
+  }
+  .field::placeholder {
+    color: var(--faint);
+  }
+  .field:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent);
+  }
+  .field:disabled {
+    background: var(--surface-2);
+    color: var(--faint);
+  }
+
+  .link {
+    color: var(--accent-ink);
+    text-decoration: none;
+  }
+  .link:hover {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .num {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
+}
+
+/* --------------------------------------------------------------- motion */
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.rise {
+  animation: rise 200ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.fade {
+  animation: fade 140ms ease both;
+}
+
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.slide-in {
+  animation: slide-in 220ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.spin {
+  animation: spin 700ms linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
