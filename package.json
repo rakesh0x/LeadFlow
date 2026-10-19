@@ -2,7 +2,7 @@
   "name": "leadflow",
   "version": "1.0.0",
   "private": true,
-  "description": "leadflow \u2014 one workspace for every lead, conversation, task and conversion",
+  "description": "leadflow — one workspace for every lead, conversation, task and conversion",
   "scripts": {
     "dev": "next dev -p 3000",
     "build": "next build",
@@ -17,14 +17,14 @@
     "jobs:run": "tsx scripts/run-jobs.ts"
   },
   "dependencies": {
-    "better-sqlite3": "^11.7.0",
+    "better-sqlite3": "12.11.1",
     "next": "15.1.11",
     "react": "19.0.0",
     "react-dom": "19.0.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.0.0",
-    "@types/better-sqlite3": "^7.6.12",
+    "@types/better-sqlite3": "9.6.0",
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.2",
     "@types/react-dom": "^19.0.2",
@@ -33,6 +33,6 @@
     "typescript": "^5.7.2"
   },
   "engines": {
-    "node": "20.x"
+    "node": "24.x"
   }
 }

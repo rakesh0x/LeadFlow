@@ -18,7 +18,8 @@ declare global {
 }
 
 function open(): Database.Database {
-  const file = resolveDbFile();
+  const isBuild = process.env.NEXT_PHASE === "phase-production-build";
+  const file = isBuild ? ":memory:" : resolveDbFile();
   const database = new Database(file);
   database.pragma("journal_mode = WAL");
   database.pragma("foreign_keys = ON");
@@ -61,6 +62,11 @@ export function migrate(database: Database.Database): void {
 export function db(): Database.Database {
   if (!globalThis.__leadflow_db) globalThis.__leadflow_db = open();
   return globalThis.__leadflow_db;
+}
+
+// build guard: never open file db during prerender
+export function isBuildPhase(): boolean {
+  return process.env.NEXT_PHASE === "phase-production-build";
 }
 
 /** opens a throwaway connection — used by scripts and the job runner. */

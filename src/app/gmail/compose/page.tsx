@@ -18,6 +18,9 @@ interface Lead {
   outreach_state: string;
 }
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 function ComposeInner() {
   const searchParams = useSearchParams();
   const router = useRouter();

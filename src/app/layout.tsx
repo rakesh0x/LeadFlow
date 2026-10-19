@@ -12,6 +12,7 @@ import { overview } from "@/lib/queries/analytics";
 import { nurtureBoard } from "@/lib/queries/nurture";
 import { quietOutreach } from "@/lib/queries/outreach";
 import { startWorker } from "@/lib/jobs/scheduler";
+import type { Database } from "better-sqlite3";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -25,22 +26,23 @@ export const metadata: Metadata = {
 };
 
 // the background worker lives in the server process, not in the browser
-startWorker();
+if (process.env.NEXT_PHASE !== "phase-production-build") startWorker();
 
-function buildCounts(database = db()): Record<string, number> {
-  const workspace = getWorkspaceRow(database);
+function buildCounts(database?: Database): Record<string, number> {
+  const databaseOrDefault = database ?? db();
+  const workspace = getWorkspaceRow(databaseOrDefault);
   if (!workspace) return {};
   const ws = workspace.id;
 
-  const tasks = taskCounts(ws, undefined, database);
-  const inbox = queryLeads(ws, { isNew: true, limit: 1 }, database);
-  const stats = overview(ws, "30d", undefined, undefined, database);
+  const tasks = taskCounts(ws, undefined, databaseOrDefault);
+  const inbox = queryLeads(ws, { isNew: true, limit: 1 }, databaseOrDefault);
+  const stats = overview(ws, "30d", undefined, undefined, databaseOrDefault);
   const duplicates = (
-    database.prepare(`SELECT COUNT(*) AS n FROM dupe_candidates WHERE workspace_id = ? AND status = 'pending'`).get(ws) as { n: number }
+    databaseOrDefault.prepare(`SELECT COUNT(*) AS n FROM dupe_candidates WHERE workspace_id = ? AND status = 'pending'`).get(ws) as { n: number }
   ).n;
   const awaiting = quietOutreach(ws, 1, database).length > 0 ? stats.awaitingReply : 0;
   const reengage = (
-    database.prepare(`SELECT COUNT(*) AS n FROM leads WHERE workspace_id = ? AND nurture_state = 'ready_for_reengagement' AND is_archived = 0`).get(ws) as {
+    databaseOrDefault.prepare(`SELECT COUNT(*) AS n FROM leads WHERE workspace_id = ? AND nurture_state = 'ready_for_reengagement' AND is_archived = 0`).get(ws) as {
       n: number;
     }
   ).n;
@@ -61,21 +63,22 @@ function buildCounts(database = db()): Record<string, number> {
   };
 }
 
-function buildAlerts(database = db()): Alert[] {
+function buildAlerts(database?: Database): Alert[] {
+  const databaseOrDefault = database ?? db();
   const workspace = getWorkspaceRow(database);
   if (!workspace) return [];
   const ws = workspace.id;
-  const tasks = taskCounts(ws, undefined, database);
-  const stats = overview(ws, "30d", undefined, undefined, database);
+  const tasks = taskCounts(ws, undefined, databaseOrDefault);
+  const stats = overview(ws, "30d", undefined, undefined, databaseOrDefault);
   const duplicates = (
-    database.prepare(`SELECT COUNT(*) AS n FROM dupe_candidates WHERE workspace_id = ? AND status = 'pending'`).get(ws) as { n: number }
+    databaseOrDefault.prepare(`SELECT COUNT(*) AS n FROM dupe_candidates WHERE workspace_id = ? AND status = 'pending'`).get(ws) as { n: number }
   ).n;
   const reengage = (
-    database.prepare(`SELECT COUNT(*) AS n FROM leads WHERE workspace_id = ? AND nurture_state = 'ready_for_reengagement' AND is_archived = 0`).get(ws) as {
+    databaseOrDefault.prepare(`SELECT COUNT(*) AS n FROM leads WHERE workspace_id = ? AND nurture_state = 'ready_for_reengagement' AND is_archived = 0`).get(ws) as {
       n: number;
     }
   ).n;
-  const quiet = queryTasks(ws, { bucket: "overdue", limit: 1 }, database).total;
+  const quiet = queryTasks(ws, { bucket: "overdue", limit: 1 }, databaseOrDefault).total;
 
   const alerts: Alert[] = [];
   if (tasks.overdue) {

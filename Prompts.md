@@ -131,3 +131,29 @@ Fix the TypeScript/JSX syntax error at line 220, column 19 ( ) expected in the c
 Inspect the surrounding JSX and trace the opening and closing parentheses, braces, and tags to find the actual cause. Pay special attention to accounts.map(), the Badge component, and nearby template literals.
 
 Fix the root cause with the smallest possible change. Run TypeScript checks and the production build to verify the fix. Do not guess, apply random changes, or rewrite unrelated code. Report the exact cause and fix.
+
+Prompt 5: 
+
+hey, can you please fix our vercel build? it's crashing right now and we are a bit stuck.
+here's what's going on:
+- we have a next.js 15.1.11 app (app router) deploying to vercel
+- we use better-sqlite3 11.10.0 for our db, file lives at data/leadflow.db via src/lib/db/client.ts
+- vercel is forcing us to use node 24.x now, node 20.x is discontinued and gets rejected
+- but on node 24, npm run build dies right after generating static pages (0/7) with this:
+node remove environment cleanuphook assertion failed, statement destructor crash in better_sqlite3.node, next.js build worker exited with sigabrt
+- we already have server external packages for better-sqlite3 and staticgenerationmaxconcurrency set to 1 in next.config.ts
+- package.json still says engines node 20.x, which vercel won't accept, it has to be 24.x
+could you please:
+1. upgrade better-sqlite3 to a version that properly supports node 24 (v12.x like ^12.2.0) and update the types package to match. update package.json and lockfile, and keep serverexternalpackages as is.
+2. set engines node to 24.x in package.json.
+3. make sure we don't open the db during next build prerender:
+- check all pages, layouts, and routes under src/app that import the db client, workspace, or gmail libs
+- make sure no db() or requireworkspaceid(db()) runs at import time, only inside the handler or component
+- add a small guard in src/lib/db/client.ts so when next_phase is phase-production-build it uses an in-memory db instead of touching ./data
+- mark every page or route that reads sqlite as force-dynamic with revalidate 0, so none of the db pages stay static
+4. verify it works:
+- on node v24, clean .next, fresh npm install, then npm run build passes with no sigabrt
+- tsc --noemit is clean
+- all the db pages show as dynamic, none crash during static gen
+5. please don't migrate us to postgres or turso in this change, just keep sqlite file db and make the build safe on node 24.
+we'll know it's fixed when vercel build on node 24.x succeeds with no spawn error and no worker crash.

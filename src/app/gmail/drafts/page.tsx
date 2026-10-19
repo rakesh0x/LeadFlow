@@ -6,6 +6,9 @@ import { getDraftsList, approveEmailDraft, rejectEmailDraft, sendApprovedDraft, 
 import { Badge, Button, Card, CardHeader, EmptyState } from "@/components/ui";
 import { PageHeader } from "@/components/app-shell";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default function DraftsPage() {
   const [drafts, setDrafts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);

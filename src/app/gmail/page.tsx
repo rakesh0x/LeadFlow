@@ -32,6 +32,9 @@ interface GmailAccount {
   is_default: number;
 }
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default function GmailInbox() {
   const [view, setView] = useState<"awaiting" | "no-reply" | "all" | "unread">("awaiting");
   const [messages, setMessages] = useState<any[]>([]);
