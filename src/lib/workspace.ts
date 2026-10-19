@@ -18,6 +18,16 @@ export function requireWorkspace(database = db()): Workspace {
   return ws;
 }
 
+/** null-safe workspace id — use in pages so a fresh/empty DB renders an
+ *  empty state instead of throwing a 500. */
+export function getWorkspaceId(database = db()): string | null {
+  try {
+    return getWorkspaceRow(database)?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export function listMembers(database = db()): Member[] {
   return database
     .prepare(`SELECT * FROM members WHERE workspace_id = ? ORDER BY role = 'owner' DESC, name`)

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { db } from "@/lib/db/client";
-import { requireWorkspaceId } from "@/lib/workspace";
+import { getWorkspaceId } from "@/lib/workspace";
 import { humanize } from "@/lib/db/time";
 import {
   acquisitionOverTime,
@@ -42,7 +42,27 @@ export default async function OverviewPage({
   const params = await searchParams;
   const period = (PERIODS.find((p) => p.value === params.period)?.value ?? "30d") as Period;
   const database = db();
-  const workspaceId = requireWorkspaceId(database);
+  const workspaceId = getWorkspaceId(database);
+
+  if (!workspaceId) {
+    return (
+      <div>
+        <PageHeader title="overview" hint="your workspace is getting ready" />
+        <Card>
+          <EmptyState
+            title="workspace is starting up"
+            hint="your database is fresh — add some leads or run the seed to see your overview."
+            icon={<Icon name="inbox" />}
+          />
+          <div className="mt-3 text-center">
+            <Link href="/leads" className="text-[12px] text-accent-ink hover:underline">
+              go to leads →
+            </Link>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   const stats = overview(workspaceId, period, undefined, undefined, database);
   const stages = stageBreakdown(workspaceId, period, undefined, database);

@@ -174,3 +174,4 @@ make sure the search params hook is wrapped in suspense properly - keep the inne
 run rm -rf .next, then npm run build locally on node 24 and confirm there is no prerender error on /gmail/compose and no worker exit.
 keep sqlite as is, no db migration, just fix the route config.
 we will know it is fixed when npm run build finishes and all pages generate without that invalid revalidate error.
+
