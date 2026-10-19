@@ -19,7 +19,6 @@ interface Lead {
 }
 
 export const dynamic = "force-dynamic";
-export const revalidate = 0;
 
 function ComposeInner() {
   const searchParams = useSearchParams();
