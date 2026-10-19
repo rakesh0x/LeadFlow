@@ -2,7 +2,7 @@ import Link from "next/link";
 import { db } from "@/lib/db/client";
 import { requireWorkspaceId, listMembers, getWorkspaceRow } from "@/lib/workspace";
 import { formatDateTime, humanize, isPast } from "@/lib/db/time";
-import { JOB_STATUS_META, SOURCE_KIND_META } from "@/lib/domain";
+import { JOB_KIND_LABEL, JOB_STATUS_META, SOURCE_KIND_META } from "@/lib/domain";
 import { jobSummary, listJobs } from "@/lib/jobs/queue";
 import { ownerPerformance } from "@/lib/queries/analytics";
 import { listSources } from "@/lib/queries/sources";

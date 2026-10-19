@@ -2,11 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { getGmailMessagesList, getLeadEmails, syncGmail, getGmailAccounts } from "@/app/gmail-actions";
-import { Badge, Button, Card, CardHeader, EmptyState, Icon, Avatar, Link } from "./ui";
-import { humanize } from "@/lib/db/time";
-import { formatDateTime } from "@/lib/db/time";
+import { getGmailMessagesList, getGmailAccounts } from "@/app/gmail-actions";
+import { Badge, Button, Card, CardHeader, EmptyState, Icon, Avatar } from "@/components/ui";
 import { PageHeader } from "@/components/app-shell";
+import Link from "next/link";
 
 interface GmailMessage {
   id: string;
@@ -33,7 +32,7 @@ interface GmailAccount {
   is_default: number;
 }
 
-export function GmailInbox() {
+export default function GmailInbox() {
   const [view, setView] = useState<"awaiting" | "no-reply" | "all" | "unread">("awaiting");
   const [messages, setMessages] = useState<any[]>([]);
   const [accounts, setAccounts] = useState<any[]>([]);
@@ -53,7 +52,7 @@ export function GmailInbox() {
     setLoading(true);
     try {
       const result = await getGmailMessagesList({
-        view: selectedAccount === "all" ? undefined : selectedAccount,
+        accountId: selectedAccount === "all" ? undefined : selectedAccount,
         direction: view === "awaiting" ? "inbound" : view === "no-reply" ? "outbound" : undefined,
         isRead: view === "unread" ? false : undefined,
         limit: 50,
@@ -110,13 +109,6 @@ export function GmailInbox() {
     if (!dateStr) return "—";
     return humanize(dateStr);
   };
-
-  const views = [
-    { value: "awaiting", label: "awaiting reply" },
-    { value: "no-reply", label: "no reply" },
-    { value: "unread", label: "unread" },
-    { value: "all", label: "all messages" },
-  ];
 
   return (
     <>
@@ -277,7 +269,7 @@ function getReadBadge(msg: any) {
   return null;
 }
 
-function formatDateTime(dateStr: string | null): string {
+function formatDate(dateStr: string | null): string {
   if (!dateStr) return "—";
   return new Date(dateStr).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "UTC" });
 }

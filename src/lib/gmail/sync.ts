@@ -2,17 +2,9 @@
  * Gmail sync - pulls messages from Gmail and matches them to leads
  */
 import type { Database } from "better-sqlite3";
-import { db } from "../db/client";
-import { newGmailAccountId, newGmailMessageId } from "../db/ids";
-import { nowIso } from "../db/time";
-import type { GmailAccount, GmailMessage, GmailSyncState } from "./types";
+import { db as dbClient } from "../db/client";
 import { gmailProvider } from "./client";
 import { openTokens, isTokenExpired } from "./secrets";
-import { ProviderError } from "../prospecting/types";
-import { recordEvent } from "../engine/events";
-import { recomputeLeadStates } from "../engine/states";
-import { normEmail } from "../engine/normalize";
-import { db as dbClient } from "../db/client";
 
 const MAX_MESSAGES_PER_SYNC = 500;
 
@@ -98,28 +90,6 @@ function normalizeMessage(msg: any, accountEmail: string) {
   };
 }
 
-function extractEmailAddresses(headers: Array<{ name: string; value: string }>, name: string): Array<{ email: string; name?: string }> {
-  const values = headers
-    .filter((h) => h.name.toLowerCase() === name.toLowerCase())
-    .flatMap((h) => h.value.split(",").map((v) => v.trim()))
-    .filter(Boolean);
-  
-  return values.map((v) => {
-    const match = v.match(/^"?([^"<]+)"?\s*<([^>]+)>$/);
-    if (match) return { email: match[2].toLowerCase().trim(), name: match[1].trim() };
-    const emailMatch = v.match(/([^<\s]+@[^>\s]+)/);
-    if (emailMatch) return { email: emailMatch[1].toLowerCase().trim(), name: v.replace(emailMatch[0], "").trim() || undefined };
-    return { email: v.toLowerCase().trim() };
-  });
-}
-
-let accountEmail = "";
-
-function normalizeMessageWithAccount(msg: any, email: string) {
-  accountEmail = email;
-  return normalizeMessage(msg, email);
-}
-
 /** matches a Gmail message to a lead by email address and thread */
 function matchMessageToLead(
   database: Database,
@@ -132,7 +102,7 @@ function matchMessageToLead(
     ...message.cc.map((e: any) => e.email),
     ...message.bcc.map((e: any) => e.email),
     message.from.email,
-  ].map(normEmail).filter(Boolean);
+  ].map(normEmailLocal).filter(Boolean);
 
   if (allEmails.length === 0) return { leadId: null, matchedBy: "none", confidence: 0 };
 
@@ -218,12 +188,8 @@ export async function syncGmailAccount(
   if (!account) throw new Error("Gmail account not found");
   if (account.status !== "connected") throw new Error("Account not connected");
 
-  // get credentials
-  const credential = resolveCredential(workspaceId, "gmail");
-  if (!credential || !credential.status.configured) {
-    throw new Error("Gmail credentials not configured");
-  }
-
+  // get credentials - use the account's own stored tokens (gmail has per-account OAuth,
+  // not the shared prospecting provider_credentials table)
   const tokens = openTokens({
     access_token: { ciphertext: account.access_token_ciphertext, iv: account.access_token_iv, tag: account.access_token_tag },
     refresh_token: account.refresh_token_ciphertext ? { ciphertext: account.refresh_token_ciphertext, iv: account.refresh_token_iv!, tag: account.refresh_token_tag! } : null,
@@ -257,7 +223,6 @@ export async function syncGmailAccount(
 
     let pageToken: string | undefined;
     let processed = 0;
-    const maxMessages = options.maxMessages ?? 500;
 
     do {
       if (processed >= maxMessages) break;
@@ -277,7 +242,7 @@ export async function syncGmailAccount(
           // check if already synced
           const existing = database
             .prepare(`SELECT id FROM gmail_messages WHERE workspace_id = ? AND gmail_message_id = ?`)
-            .get(ws, msgRef.id) as { id: string } | undefined;
+            .get(workspaceId, msgRef.id) as { id: string } | undefined;
           
           if (existing) {
             processed++;
@@ -285,7 +250,7 @@ export async function syncGmailAccount(
           }
 
           // fetch full message
-          const msg = await gmailProvider.getMessage(account.access_token, msgRef.id, "full");
+          const msg = await gmailProvider.getMessage(accessToken, msgRef.id, "full");
           const normalized = normalizeMessage(msg, account.email);
           const match = matchMessageToLead(dbClient(), workspaceId, account.email, normalized);
           
@@ -405,9 +370,3 @@ export async function syncAllGmailAccounts(workspaceId: string): Promise<{ total
 
   return { totalSynced, totalMatched, accounts: accounts.length };
 }
-
-function normEmailLocal(email: string): string {
-  return email.toLowerCase().trim();
-}
-
-export { gmailProvider } from "./client";

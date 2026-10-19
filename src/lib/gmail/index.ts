@@ -1,28 +1,9 @@
 /** Gmail integration - main entry point */
 import { db } from "../db/client";
-import { nowIso } from "../db/time";
 import { writeLog } from "../engine/events";
-import { envKey, keyHint, open, seal, sealTokens, openTokens, isTokenExpired } from "./secrets";
+import { keyHint, open, sealTokens, openTokens, isTokenExpired } from "./secrets";
 import { gmailProvider, GMAIL_INFO } from "./client";
 import { syncGmailAccount, syncAllGmailAccounts } from "./sync";
-import { ProviderError, type Provider, type ProviderId, type ProviderInfo } from "../prospecting/types";
-import type { GmailAccount, GmailMessage, GmailSyncState, GmailDraft } from "./types";
-
-function newGmailAccountId(): string {
-  return `gacc_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
-}
-
-function newGmailMessageId(): string {
-  return `gmsg_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
-}
-
-function newGmailDraftId(): string {
-  return `gdft_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
-}
-
-function newSyncStateId(): string {
-  return `sync_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
-}
 
 export const GMAIL_PROVIDER: { id: "gmail"; info: typeof GMAIL_INFO } = {
   id: "gmail",
@@ -74,28 +55,8 @@ interface CredentialRow {
 
 /** reads the OAuth tokens, decrypting them only on the server */
 export function resolveGmailCredential(workspaceId: string, memberId: string): ResolvedCredential | null {
-  const fromEnv = envKey("gmail");
-  if (fromEnv) {
-    return {
-      secret: fromEnv,
-      refreshToken: null,
-      expiresAt: null,
-      plan: null,
-      status: {
-        provider: "gmail",
-        label: "Gmail",
-        configured: true,
-        source: "environment",
-        hint: keyHint(fromEnv),
-        plan: null,
-        lastVerifiedAt: null,
-        lastError: null,
-      },
-    };
-  }
-
   const row = db()
-    .prepare(`SELECT * FROM gmail_accounts WHERE workspace_id = ? AND member_id = ? AND is_active = 1`)
+    .prepare(`SELECT * FROM gmail_accounts WHERE workspace_id = ? AND member_id = ? AND status != 'disconnected' ORDER BY is_default DESC LIMIT 1`)
     .get(workspaceId, memberId) as CredentialRow | undefined;
 
   if (!row || row.status === "disconnected") return null;
@@ -234,7 +195,7 @@ export function listGmailAccounts(workspaceId: string): Array<{
   last_error: string | null;
 }> {
   return db()
-    .prepare(`SELECT id, email, status, last_sync_at, is_default, last_error FROM gmail_accounts WHERE workspace_id = ? AND is_active = 1 ORDER BY is_default DESC, created_at`)
+    .prepare(`SELECT id, email, status, last_sync_at, is_default, last_error FROM gmail_accounts WHERE workspace_id = ? AND status != 'disconnected' ORDER BY is_default DESC, created_at`)
     .all(workspaceId) as Array<{ id: string; email: string; status: string; last_sync_at: string | null; is_default: number; last_error: string | null }>;
 }
 
@@ -261,20 +222,20 @@ export async function syncGmailWorkspace(workspaceId: string): Promise<{ synced:
     .prepare(`SELECT id FROM gmail_accounts WHERE workspace_id = ? AND status = 'connected'`)
     .all(workspaceId) as { id: string }[];
 
-  let totalSynced = 0;
-  let totalMatched = 0;
+  let synced = 0;
+  let matched = 0;
 
   for (const account of accounts) {
     try {
       const result = await syncGmailAccount(workspaceId, account.id);
-      totalSynced += result.synced;
-      totalMatched += result.matched;
+      synced += result.synced;
+      matched += result.matched;
     } catch (error) {
       console.error(`Failed to sync account ${account.id}:`, error);
     }
   }
 
-  return { totalSynced, totalMatched };
+  return { synced, matched };
 }
 
 /** gets sync status for all accounts in a workspace */
@@ -288,7 +249,7 @@ export function getSyncStatus(workspaceId: string): Array<{
   is_default: number;
 }> {
   return db()
-    .prepare(`SELECT id, email, status, last_sync_at, sync_cursor, last_error, is_default FROM gmail_accounts WHERE workspace_id = ? AND is_active = 1 ORDER BY is_default DESC, created_at`)
+    .prepare(`SELECT id, email, status, last_sync_at, sync_cursor, last_error, is_default FROM gmail_accounts WHERE workspace_id = ? AND status != 'disconnected' ORDER BY is_default DESC, created_at`)
     .all(workspaceId) as Array<{
     id: string;
     email: string;
@@ -311,33 +272,32 @@ export function getGmailMessages(
     offset?: number;
   } = {}
 ): { messages: any[]; total: number } {
-  const database = db();
   const where: string[] = ["m.workspace_id = ?"];
-  const params: any = { workspaceId };
+  const params: any[] = [workspaceId];
 
   if (options.accountId) {
-    where.push("m.account_id = @accountId");
-    params.accountId = options.accountId;
+    where.push("m.account_id = ?");
+    params.push(options.accountId);
   }
   if (options.leadId) {
-    where.push("m.lead_id = @leadId");
-    params.leadId = options.leadId;
+    where.push("m.lead_id = ?");
+    params.push(options.leadId);
   }
   if (options.direction) {
-    where.push("m.direction = @direction");
-    params.direction = options.direction;
+    where.push("m.direction = ?");
+    params.push(options.direction);
   }
   if (options.isRead !== undefined) {
-    where.push("m.is_read = @isRead");
-    params.isRead = options.isRead ? 1 : 0;
+    where.push("m.is_read = ?");
+    params.push(options.isRead ? 1 : 0);
   }
 
   const whereSql = where.join(" AND ");
-  const total = (db().prepare(`SELECT COUNT(*) AS n FROM gmail_messages m WHERE ${whereSql}`).get(params) as { n: number }).n;
+  const total = (db().prepare(`SELECT COUNT(*) AS n FROM gmail_messages m WHERE ${whereSql}`).get(...params) as { n: number }).n;
 
   const messages = db()
     .prepare(`SELECT m.*, l.full_name AS lead_name, l.email AS lead_email FROM gmail_messages m LEFT JOIN leads l ON l.id = m.lead_id WHERE ${whereSql} ORDER BY m.gmail_sent_at DESC LIMIT ? OFFSET ?`)
-    .all({ ...params, limit: options.limit ?? 50, offset: options.offset ?? 0 }) as any[];
+    .all(...params, options.limit ?? 50, options.offset ?? 0) as any[];
 
   return { messages, total: total };
 }
@@ -347,24 +307,24 @@ export function getGmailDrafts(
   options: { accountId?: string; leadId?: string; status?: string } = {}
 ): any[] {
   const where: string[] = ["d.workspace_id = ?"];
-  const params: any = { workspaceId };
+  const params: any[] = [workspaceId];
 
   if (options.accountId) {
-    where.push("d.account_id = @accountId");
-    params.accountId = options.accountId;
+    where.push("d.account_id = ?");
+    params.push(options.accountId);
   }
   if (options.leadId) {
-    where.push("d.lead_id = @leadId");
-    params.leadId = options.leadId;
+    where.push("d.lead_id = ?");
+    params.push(options.leadId);
   }
   if (options.status) {
-    where.push("d.status = @status");
-    params.status = options.status;
+    where.push("d.status = ?");
+    params.push(options.status);
   }
 
   return db()
     .prepare(`SELECT d.*, l.full_name AS lead_name FROM gmail_drafts d LEFT JOIN leads l ON l.id = d.lead_id WHERE ${where.join(" AND ")} ORDER BY d.created_at DESC`)
-    .all(params) as any[];
+    .all(...params) as any[];
 }
 
 export function createGmailDraft(
@@ -434,14 +394,9 @@ export async function sendGmailDraft(
   const draft = database.prepare(`SELECT * FROM gmail_drafts WHERE id = ? AND workspace_id = ? AND status = 'approved'`).get(draftId, workspaceId) as any;
   if (!draft) return { ok: false, error: "Draft not found or not approved" };
 
-  // get account and credentials
-  const account = database.prepare(`SELECT * FROM gmail_accounts WHERE id = ? AND workspace_id = ? AND status = 'connected'`).get(draft.account_id) as any;
+  // get account and its own stored tokens (per-account OAuth)
+  const account = database.prepare(`SELECT * FROM gmail_accounts WHERE id = ? AND workspace_id = ? AND status = 'connected'`).get(draft.account_id, workspaceId) as any;
   if (!account) return { ok: false, error: "Gmail account not connected" };
-
-  const credential = resolveCredential(workspaceId, "gmail");
-  if (!credential || !credential.status.configured) {
-    return { ok: false, error: "Gmail credentials not available" };
-  }
 
   const tokens = openTokens({
     access_token: { ciphertext: account.access_token_ciphertext, iv: account.access_token_iv, tag: account.access_token_tag },
@@ -474,7 +429,7 @@ export async function sendGmailDraft(
   const encoded = Buffer.from(messageLines).toString("base64url");
 
   try {
-    const result = await gmailProvider.sendMessage(credential.secret, { raw: encoded, threadId: draft.campaign_id ?? undefined });
+    const result = await gmailProvider.sendMessage(accessToken, { raw: encoded, threadId: draft.campaign_id ?? undefined });
     
     const now = new Date().toISOString();
     db().prepare(`UPDATE gmail_drafts SET status = 'sent', sent_at = ?, gmail_message_id = ?, updated_at = ? WHERE id = ?`)
@@ -494,5 +449,4 @@ export function deleteGmailDraft(workspaceId: string, draftId: string): { ok: bo
   return { ok: true };
 }
 
-export { gmailProvider, syncGmailAccount, syncAllGmailAccounts } from "./sync";
-export { syncGmailAccount, syncAllGmailAccounts } from "./sync";
+export { syncGmailAccount, syncAllGmailAccounts };

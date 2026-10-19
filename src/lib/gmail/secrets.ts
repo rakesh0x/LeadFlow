@@ -94,7 +94,8 @@ export function openTokens(sealed: { access_token: Sealed; refresh_token: Sealed
 /** checks if tokens are expired or about to expire (within 5 minutes) */
 export function isTokenExpired(expiresAt: number | string | null): boolean {
   if (!expiresAt) return true;
-  const expiry = typeof expiresAt === "string" ? parseInt(expiresAt, 10) : expiresAt;
+  const expiry = typeof expiresAt === "string" ? Date.parse(expiresAt) : expiresAt;
+  if (!Number.isFinite(expiry)) return true;
   const buffer = 5 * 60 * 1000; // 5 minute buffer
   return Date.now() >= expiry - buffer;
 }
@@ -102,6 +103,7 @@ export function isTokenExpired(expiresAt: number | string | null): boolean {
 /** gets time until token expiry in milliseconds */
 export function timeUntilExpiry(expiresAt: number | string | null): number {
   if (!expiresAt) return 0;
-  const expiry = typeof expiresAt === "string" ? parseInt(expiresAt, 10) : expiresAt;
+  const expiry = typeof expiresAt === "string" ? Date.parse(expiresAt) : expiresAt;
+  if (!Number.isFinite(expiry)) return 0;
   return Math.max(0, expiry - Date.now());
 }

@@ -80,7 +80,6 @@ export async function startGmailOAuth(): Promise<{ url: string } | { error: stri
 /** handles OAuth callback - call this from your auth route */
 export async function handleGmailCallback(code: string, state: string): Promise<{ ok: boolean; error?: string }> {
   try {
-    const { workspaceId, memberId } = JSON.parse(Buffer.from(state, "base64url").toString());
     
     const clientId = process.env.GOOGLE_CLIENT_ID!;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET!;
@@ -115,12 +114,6 @@ export async function handleGmailCallback(code: string, state: string): Promise<
     const workspaceId = requireWorkspaceId(db());
     const member = currentMemberSync();
     
-    const sealed = (await import("@/lib/gmail/secrets")).sealTokens({
-      access_token: tokens.access_token,
-      refresh_token: tokens.refresh_token,
-      expires_at: Date.now() + tokens.expires_in * 1000,
-    });
-
     const dbClient = db();
     const now = new Date().toISOString();
     
@@ -177,7 +170,7 @@ export async function disconnectGmail(accountId: string): Promise<{ ok: boolean;
     const workspaceId = requireWorkspaceId(db());
     const { clearGmailCredential } = await import("@/lib/gmail");
     
-    const account = db().prepare(`SELECT * FROM gmail_accounts WHERE id = ? AND workspace_id = ?`).get(accountId, workspaceId);
+    const account = db().prepare(`SELECT * FROM gmail_accounts WHERE id = ? AND workspace_id = ?`).get(accountId, workspaceId) as { member_id: string; email: string } | undefined;
     if (!account) return { ok: false, error: "Account not found" };
 
     clearGmailCredential(workspaceId, account.member_id, account.email);

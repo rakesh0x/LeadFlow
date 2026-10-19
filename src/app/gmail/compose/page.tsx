@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createEmailDraft, getGmailAccounts, getLeadEmails } from "@/app/gmail-actions";
-import { Badge, Button, Card, CardHeader, EmptyState, Icon, Avatar } from "./ui";
-import { humanize } from "@/lib/db/time";
+import { Badge, Button, Card, CardHeader, EmptyState, Icon, Avatar } from "@/components/ui"
+import { humanize as humanizeText  } from "@/lib/db/time";
 import { PageHeader } from "@/components/app-shell";
+import Link from "next/link";
 
 interface Lead {
   id: string;
@@ -17,7 +18,7 @@ interface Lead {
   outreach_state: string;
 }
 
-export function ComposePage() {
+function ComposeInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const leadId = searchParams.get("lead");
@@ -319,4 +320,12 @@ function humanize(dateStr: string | null): string {
   if (hours < 24) return `${hours}h ago`;
   if (days < 7) return `${days}d ago`;
   return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+export default function ComposePage() {
+  return (
+    <Suspense fallback={<div className="px-4 py-8 text-center text-[12.5px] text-muted">loading…</div>}>
+      <ComposeInner />
+    </Suspense>
+  );
 }

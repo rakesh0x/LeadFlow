@@ -7,7 +7,7 @@ import { Badge, Button, Card, CardHeader, Icon } from "./ui";
 
 export function GmailProviderSetup({ statuses }: { statuses: Array<{ provider: string; label: string; configured: boolean; source: string; hint: string | null; plan: string | null; lastVerifiedAt: string | null; lastError: string | null }> }) {
   const [result, setResult] = useState<{ ok: boolean; error?: string; message?: string } | null>(null);
-  const [pending, startTransition] = useState(false);
+  const [pending, startTransitionAction] = useTransition();
   const router = useRouter();
 
   const gmailStatus = statuses.find((s) => s.provider === "gmail");
@@ -15,7 +15,7 @@ export function GmailProviderSetup({ statuses }: { statuses: Array<{ provider: s
 
   const connectGmail = () => {
     setResult(null);
-    startTransition(async () => {
+    startTransitionAction(async () => {
       const { startGmailOAuth } = await import("@/app/gmail-actions");
       const result = await startGmailOAuth();
       if ("url" in result) {

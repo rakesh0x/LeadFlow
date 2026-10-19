@@ -159,15 +159,17 @@ function buildUrl(path: string, query?: Record<string, string | string[] | numbe
     for (const [key, value] of Object.entries(query)) {
       if (value === undefined || value === null) continue;
       if (Array.isArray(value)) {
-        for (const v of value) query.append(key, String(v));
+        for (const v of value) params.append(key, String(v));
       } else {
-        query.set(key, String(value));
+        params.set(key, String(value));
       }
     }
   }
-  const qs = query.toString();
+  const qs = params.toString();
   return `${BASE}${path}${qs ? `?${qs}` : ""}`;
 }
+
+void buildUrl;
 
 export const gmailProvider = {
   id: "gmail" as const,
@@ -211,7 +213,7 @@ export const gmailProvider = {
         labelIds: options.labelIds,
         maxResults: options.maxResults ?? 100,
         pageToken: options.pageToken,
-        includeSpamTrash: options.includeSpamTrash,
+        includeSpamTrash: options.includeSpamTrash === undefined ? undefined : String(options.includeSpamTrash),
       },
     });
   },
@@ -276,37 +278,9 @@ export const gmailProvider = {
   async stopWatch(secret: string) {
     return gmailFetch(secret, "/stop", { method: "POST" });
   },
-};
-
-export const gmailProvider = {
-  id: "gmail" as const,
-  info: {
-    id: "gmail",
-    label: "Gmail",
-    kinds: ["email"] as const,
-    providesEmailOnSearch: true,
-    emailMethod: "emails come directly from your Gmail inbox via OAuth",
-    signupUrl: "https://console.cloud.google.com/",
-    docsUrl: "https://developers.google.com/gmail/api",
-    keyUrl: "https://console.cloud.google.com/apis/credentials",
-    sizeFilterLabel: "not applicable",
-    companiesNote: "Gmail is an email provider, not a prospect database. Use Apollo or PDL for finding new leads.",
-    planNotes: [
-      "requires a Google Cloud project with Gmail API enabled",
-      "OAuth consent screen must be configured with gmail.readonly, gmail.send, gmail.modify, gmail.metadata scopes",
-      "free tier: generous daily limits",
-      "tokens are encrypted and stored securely",
-    ],
-  },
-
-  isConfigured(secret: string | null) {
-    return Boolean(secret && secret.trim().length >= 8);
-  },
 
   async verify(secret: string) {
     const profile = await gmailProvider.getProfile(secret);
     return { ok: true as const, label: profile.emailAddress };
   },
 };
-
-const BASE = "https://gmail.googleapis.com/gmail/v1/users/me";

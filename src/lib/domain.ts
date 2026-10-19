@@ -210,6 +210,10 @@ export const SOURCE_KIND_META: Record<SourceKind, Meta> = {
   referral: { label: "referral", hint: "told by someone else", tone: "green" },
 };
 
+export const JOB_KIND_LABEL: Record<string, string> = Object.fromEntries(
+  JOB_KINDS.map((k) => [k, k.replaceAll("_", " ")])
+);
+
 export const JOB_STATUS_META: Record<string, Meta> = {
   pending: { label: "pending", hint: "waiting to run", tone: "slate" },
   running: { label: "running", hint: "working on it now", tone: "blue" },
